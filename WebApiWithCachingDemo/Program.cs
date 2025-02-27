@@ -32,6 +32,29 @@ Task RunApp(string url)
     // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
     builder.Services.AddOpenApi();
 
+    builder.Services.AddOutputCache(options =>
+    {
+        options.AddBasePolicy(builder => builder.Expire(TimeSpan.FromSeconds(6)));
+        options.AddPolicy("Expire10", builder =>
+            builder.Expire(TimeSpan.FromSeconds(10)));
+        options.AddPolicy("Expire20", builder => builder.Expire(TimeSpan.FromSeconds(20)));
+        options.AddPolicy("Query", builder => builder.SetVaryByQuery("culture")); // Only cache based on the query parameter
+        options.AddPolicy("Header", builder => builder.SetVaryByHeader("Accept-Language")); // Only cache based on the header
+        options.AddPolicy("HostHeader", builder => builder.SetVaryByHost(true)); // Only cache based on the Host Header
+        options.AddPolicy("NoCache", builder => builder.NoCache()); // No cache
+        options.AddPolicy("NoLock", builder => builder.SetLocking(false)); // No locking mechanism for the cache item, The Resource Locking is mainly used to prevent the cache stampede problem
+        options.AddPolicy("EvictTagBlog", builder => builder
+        .With(c => c.HttpContext.Request.Path.StartsWithSegments("/api/time"))
+        .Tag("tag-blog"));
+
+        /* // Set the size limit for the output cache
+        options.SizeLimit = 100; // Maximum size of cache storage. THe default value is 100 MB. When this limit is reached, no new cache item will be added to the cache storage until some cache items are removed from the cache storage. So you can use the cache eviction endpoints which use IOutputCacheStore to remove the cache items from the cache storage
+        options.MaximumBodySize = 64; // IF the response body exceeds this size, the response body will not be cached
+        options.DefaultExpirationTimeSpan = TimeSpan.FromSeconds(60); // Default expiration time span for the cache item when not specified by the OutputCache policy. The default value is 60 seconds */
+
+        // The Output Cache will be stored in the cache service which is registered in the DI container, by default, the InMemory cache service is used, if you want to use the Redis cache service, you need to register the Redis cache service in the DI container using normal Redis cache service registration
+    });
+
     AddCacheServices(builder);
 
     builder.Services.AddSingleton<IUnitOfWork, UnitOfWork>();
@@ -46,6 +69,7 @@ Task RunApp(string url)
     }
 
     app.UseHttpsRedirection();
+    app.UseOutputCache(); // Output Cache middleware should be added after UseCors
 
     app.UseAuthorization();
 
@@ -100,7 +124,6 @@ void AddCacheServices(WebApplicationBuilder builder)
                 options.InstanceName = "ABC";
             });
             break;
-
         default:
             throw new InvalidOperationException("Invalid cache server");
     }

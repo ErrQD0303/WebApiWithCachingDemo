@@ -6,4 +6,5 @@ public enum CacheType
     Redis,
     InMemoryDistributed,
     SQLServer,
+    Hybrid
 }
