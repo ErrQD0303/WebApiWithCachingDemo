@@ -23,6 +23,7 @@ namespace WebApiWithCachingDemo.Controllers
             _cacheStore = cacheStore;
         }
 
+        /* Output Caching */
         [HttpGet]
         public IActionResult Get()
         {
@@ -54,8 +55,8 @@ namespace WebApiWithCachingDemo.Controllers
         }
 
         // This endpoint is used to cache the response for default 20 seconds, and use the Policy EvictTagBlog to cache the response by tag "tag-blog"
-        [HttpGet("EvictEndpoint")]
-        [OutputCache(PolicyName = "EvictTagBlog", Tags = ["tag-blog"])] // This attribute is used to cache the response of the action method
+        [HttpGet("EvictedEndpoint")]
+        [OutputCache(Tags = ["tag-blog"])] // This attribute is used to cache the response of the action method
         public IActionResult GetOutputByTagBlog()
         {
             var currentTime = _uOW.CurrentTimeRepository.GetCurrentTime();
@@ -66,10 +67,52 @@ namespace WebApiWithCachingDemo.Controllers
         }
 
         [HttpPost("EvictCache/{tag}")] // This action method is used to evict the cache by tag to all client browsers
-        public IActionResult EvictAllCacheByTag(string tag)
+        public IActionResult EvictAllCacheByTag(string tag = "tag-blog")
         {
             _cacheStore.EvictByTagAsync(tag, default);
             return Ok("Cache evicted");
+        }
+
+        /* Response Caching */
+        [HttpGet("ResponseCache")]
+        [ResponseCache(VaryByHeader = "User-Agent", Duration = 30)] // This attribute is used to cache the response of the action method
+        // Response
+        // Cache-Control: public, max-age=30 // The cache may store in shared cache or private cache and has a maximum age of 30 seconds
+        // Vary: User-Agent // If you are using different User-Agent (a.k.a different browser), the cache will be different
+        public IActionResult GetResponseCache()
+        {
+            return Content(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+        }
+
+        [HttpGet("ResponseCacheNoStore")]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)] // This attribute is used to cache the response of the action method
+        // Response
+        // Cache-Control: no-store, no-cache
+        // Pragma: no-cache
+        // Explains:
+        // NoStore = true set the Cache-Control header to no-store
+        // Location = ResponseCacheLocation.None set the Pragma header to no-cache and add to the Cache-Control header no-cache, else the Cache-Control header will be set to private or public, and the Pragma header will not be added
+        public IActionResult GetResponseCacheNoStore()
+        {
+            return Content(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+        }
+
+        [HttpGet("ResponseCacheLocationAnyWith10secondsDuration")]
+        [ResponseCache(Duration = 10, Location = ResponseCacheLocation.Any)]
+        // Response
+        // Cache-Control: public, max-age=10
+        public IActionResult GetResponseCacheLocationAnyWith10secondsDuration()
+        {
+            return Content(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+        }
+
+        [HttpGet("WithDefault30CacheProfile")]
+        [ResponseCache(CacheProfileName = "Default30")]
+        // Response
+        // Cache-Control: public, max-age=10
+        public IActionResult GetDefault30CacheProfile()
+        {
+            return Content(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
         }
     }
 }

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Caching.Memory;
 using WebApiWithCachingDemo.Repository;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Mvc;
 
 /* DotNetEnv.Env.Load();
 var redisServer = DotNetEnv.Env.GetString("REDIS_SERVER");
@@ -55,6 +56,18 @@ Task RunApp(string url)
         // The Output Cache will be stored in the cache service which is registered in the DI container, by default, the InMemory cache service is used, if you want to use the Redis cache service, you need to register the Redis cache service in the DI container using normal Redis cache service registration
     });
 
+    // Response Caching Middleware
+    builder.Services.AddResponseCaching();
+    // Add Response Caching Cache Profile
+    builder.Services.AddControllers(options =>
+    {
+        options.CacheProfiles.Add("Default30", new CacheProfile
+        {
+            Duration = 30,
+            Location = ResponseCacheLocation.Client,
+        });
+    });
+
     AddCacheServices(builder);
 
     builder.Services.AddSingleton<IUnitOfWork, UnitOfWork>();
@@ -70,6 +83,7 @@ Task RunApp(string url)
 
     app.UseHttpsRedirection();
     app.UseOutputCache(); // Output Cache middleware should be added after UseCors
+    app.UseResponseCaching();
 
     app.UseAuthorization();
 
