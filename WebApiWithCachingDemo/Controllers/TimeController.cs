@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.AspNetCore.ResponseCaching;
 using WebApiWithCachingDemo.Repository;
 
 namespace WebApiWithCachingDemo.Controllers
@@ -113,6 +114,23 @@ namespace WebApiWithCachingDemo.Controllers
         public IActionResult GetDefault30CacheProfile()
         {
             return Content(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+        }
+
+        [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Any)]
+        [HttpGet("WithResponseCachingFeature")]
+        public IActionResult GetResponseCachingFeature([FromQuery] string? name)
+        {
+            var responseCacheFeature = HttpContext.Features.Get<IResponseCachingFeature>();
+
+            if (responseCacheFeature is not null)
+            {
+                responseCacheFeature.VaryByQueryKeys = new[] { "name" };
+            }
+
+            // With each different query string, the cache will be different
+            // If a new value of the query string is set, the old cache will not be evicted unless the storage size limit is reached
+
+            return Content(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + $" - {name}");
         }
     }
 }

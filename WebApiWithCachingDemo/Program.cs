@@ -4,6 +4,7 @@ using WebApiWithCachingDemo.Repository;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.ResponseCaching;
 
 /* DotNetEnv.Env.Load();
 var redisServer = DotNetEnv.Env.GetString("REDIS_SERVER");
@@ -57,7 +58,16 @@ Task RunApp(string url)
     });
 
     // Response Caching Middleware
-    builder.Services.AddResponseCaching();
+    builder.Services.AddResponseCaching(options =>
+    {
+        /* I want to have:
+        - Max Response body size: 1024MB;
+        - Response Caching Middleware Storage Size Limit: 1500MB
+        - Store response with the same request's path but have differences in caches: true */
+        options.MaximumBodySize = 1024;
+        options.SizeLimit = 1500;
+        options.UseCaseSensitivePaths = true;
+    });
     // Add Response Caching Cache Profile
     builder.Services.AddControllers(options =>
     {
@@ -84,6 +94,29 @@ Task RunApp(string url)
     app.UseHttpsRedirection();
     app.UseOutputCache(); // Output Cache middleware should be added after UseCors
     app.UseResponseCaching();
+    /* // Use Response Caching Middleware, this middleware will be overrided by The ResponseCache attribute in the action method if any
+    app.Use(async (context, next) =>
+    {
+    context.Response.GetTypedHeaders().CacheControl =
+        new Microsoft.Net.Http.Headers.CacheControlHeaderValue()
+        {
+            Public = true,
+            MaxAge = TimeSpan.FromSeconds(10)
+        };
+    context.Response.Headers[Microsoft.Net.Http.Headers.HeaderNames.Vary] =
+        new string[] { "Accept-Encoding" };
+
+    await next();
+    }); */
+    /* app.Use(async (context, next) =>
+    {
+        var responseCacheFeature = context.Features.Get<IResponseCachingFeature>();
+        if (responseCacheFeature != null)
+        {
+            responseCacheFeature.VaryByQueryKeys = new[] { "MyKey" };
+        }
+        await next();
+    }); */
 
     app.UseAuthorization();
 
